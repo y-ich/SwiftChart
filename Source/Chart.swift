@@ -243,7 +243,7 @@ open class Chart: UIControl {
     }
 
     private func commonInit() {
-        backgroundColor = UIColor.clear
+        //backgroundColor = UIColor.clear // オリジナルで強制的にclearしているが、storyboardの初期化を使うためコメントアウト
         contentMode = .redraw // redraw rects on bounds change
     }
 
