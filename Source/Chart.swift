@@ -121,7 +121,7 @@ open class Chart: UIView {
     /**
     Font used for the labels.
     */
-    public var labelFont: UIFont? = UIFont.systemFont(ofSize: 12)
+    public var labelFont: UIFont = UIFont.systemFont(ofSize: 12)
 
     /**
     The color used for the labels.
@@ -213,7 +213,7 @@ open class Chart: UIView {
     // MARK: Private variables
 
     private var highlightShapeLayer: CAShapeLayer!
-    private var layerStore: [CAShapeLayer] = []
+    private var layerStore: [CALayer] = []
 
     private var drawingHeight: CGFloat!
     private var drawingWidth: CGFloat!
@@ -318,9 +318,6 @@ open class Chart: UIView {
 
         // Remove things before drawing, e.g. when changing orientation
 
-        for view in self.subviews {
-            view.removeFromSuperview()
-        }
         for layer in layerStore {
             layer.removeFromSuperlayer()
         }
@@ -333,7 +330,7 @@ open class Chart: UIView {
             // Separate each line in multiple segments over and below the x axis
             let segments = Chart.segmentLine(series.data as ChartLineSegment, zeroLevel: series.colors.zeroLevel)
 
-            segments.forEach({ segment in
+            for segment in segments {
                 let scaledXValues = scaleValuesOnXAxis( segment.map { $0.x } )
                 let scaledYValues = scaleValuesOnYAxis( segment.map { $0.y } )
 
@@ -343,7 +340,7 @@ open class Chart: UIView {
                 if series.area {
                     drawArea(scaledXValues, yValues: scaledYValues, seriesIndex: index)
                 }
-            })
+            }
         }
 
         drawAxes()
@@ -562,7 +559,7 @@ open class Chart: UIView {
 
         let scaled = scaleValuesOnXAxis(labels)
         let padding: CGFloat = 5
-        scaled.enumerated().forEach { (i, value) in
+        for (i, value) in scaled.enumerated() {
             let x = CGFloat(value)
             let isLastLabel = x == drawingWidth
 
@@ -578,41 +575,58 @@ open class Chart: UIView {
                 return
             }
 
-            // Add label
-            let label = UILabel(frame: CGRect(x: x, y: drawingHeight, width: 0, height: 0))
-            label.font = labelFont
-            label.text = xLabelsFormatter(i, labels[i])
-            label.textColor = labelColor
+            let text = xLabelsFormatter(i, labels[i])
+            let font = labelFont
+            let attributes: [NSAttributedString.Key: Any] = [.font: font]
+            let size = (text as NSString).size(withAttributes: attributes)
 
-            // Set label size
-            label.sizeToFit()
-            // Center label vertically
-            label.frame.origin.y += topInset
+            let textLayer = CATextLayer()
+            textLayer.string = text
+            textLayer.font = font
+            textLayer.fontSize = font.pointSize
+            textLayer.foregroundColor = labelColor.cgColor
+            textLayer.contentsScale = UIScreen.main.scale
+            textLayer.alignmentMode = {
+                switch xLabelsTextAlignment {
+                case .center: return .center
+                case .left: return .left
+                case .right: return .right
+                default: return .left
+                }
+            }()
+
+            var frame = CGRect(x: x, y: drawingHeight, width: size.width, height: size.height)
+
+            // 共通: 垂直中央に
+            frame.origin.y += topInset
+
             if xLabelsOrientation == .horizontal {
-                // Add left padding
-                label.frame.origin.y -= (label.frame.height - bottomInset) / 2
-                label.frame.origin.x += padding
+                // 左右にパディング
+                frame.origin.y -= (size.height - bottomInset) / 2
+                frame.origin.x += padding
 
-                // Set label's text alignment
-                label.frame.size.width = (drawingWidth / CGFloat(labels.count)) - padding * 2
-                label.textAlignment = xLabelsTextAlignment
+                // 幅を明示的に制限し、改行せず切れることを防ぐなら isWrapped = false
+                frame.size.width = (drawingWidth / CGFloat(labels.count)) - padding * 2
+                textLayer.isWrapped = false
             } else {
-                label.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi / 2))
+                // 縦書き風に回転
+                textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat.pi / 2))
 
-                // Adjust vertical position according to the label's height
-                label.frame.origin.y += label.frame.size.height / 2
+                // 垂直位置調整
+                frame.origin.y += size.height / 2
 
-                // Adjust horizontal position as the series line
-                label.frame.origin.x = x
+                // 横位置をラベルに合わせて調整
+                frame.origin.x = x
                 if xLabelsTextAlignment == .center {
-                    // Align horizontally in series
-                    label.frame.origin.x += ((drawingWidth / CGFloat(labels.count)) / 2) - (label.frame.size.width / 2)
+                    frame.origin.x += ((drawingWidth / CGFloat(labels.count)) / 2) - (size.width / 2)
                 } else {
-                    // Give some space from the vertical line
-                    label.frame.origin.x += padding
+                    frame.origin.x += padding
                 }
             }
-            self.addSubview(label)
+
+            textLayer.frame = frame
+            layer.addSublayer(textLayer)
+            layerStore.append(textLayer)
         }
         let gridLayer = CAShapeLayer()
         gridLayer.frame = self.bounds
@@ -643,7 +657,7 @@ open class Chart: UIView {
         let padding: CGFloat = 5
         let zero = CGFloat(getZeroValueOnYAxis(zeroLevel: 0))
 
-        scaled.enumerated().forEach { (i, value) in
+        for (i, value) in scaled.enumerated() {
 
             let y = CGFloat(value)
 
@@ -658,21 +672,37 @@ open class Chart: UIView {
                 }
             }
 
-            let label = UILabel(frame: CGRect(x: padding, y: y, width: 0, height: 0))
-            label.font = labelFont
-            label.text = yLabelsFormatter(i, labels[i])
-            label.textColor = labelColor
-            label.sizeToFit()
+            let text = yLabelsFormatter(i, labels[i])
+            let font = labelFont
+            let attributes: [NSAttributedString.Key: Any] = [.font: font]
+            let size = (text as NSString).size(withAttributes: attributes)
 
+            let textLayer = CATextLayer()
+            textLayer.string = text
+            textLayer.font = font
+            textLayer.fontSize = font.pointSize
+            textLayer.foregroundColor = labelColor.cgColor
+            textLayer.contentsScale = UIScreen.main.scale
+            textLayer.alignmentMode = .left // デフォルト、必要に応じて変更可能
+            textLayer.isWrapped = false
+
+            // 初期X座標（左側のY軸用）
+            var xPosition = padding
+
+            // Y軸が右側にある場合
             if yLabelsOnRightSide {
-                label.frame.origin.x = drawingWidth
-                label.frame.origin.x -= label.frame.width + padding
+                xPosition = drawingWidth - size.width - padding
             }
 
-            // Labels should be placed above the horizontal grid
-            label.frame.origin.y -= label.frame.height
+            // フレーム設定
+            var frame = CGRect(x: xPosition,
+                            y: y - size.height, // グリッド線の上に表示
+                            width: size.width,
+                            height: size.height)
 
-            self.addSubview(label)
+            textLayer.frame = frame
+            layer.addSublayer(textLayer)
+            layerStore.append(textLayer)
         }
 
         let dashedLayer = CAShapeLayer()
@@ -804,7 +834,7 @@ open class Chart: UIView {
         ) {
         var lowestValue: Double?, highestValue: Double?, lowestIndex: Int?, highestIndex: Int?
 
-        values.enumerated().forEach { (i, currentValue) in
+        for (i, currentValue) in values.enumerated() {
 
             if currentValue <= value && (lowestValue == nil || lowestValue! < currentValue) {
                 lowestValue = currentValue
@@ -832,7 +862,7 @@ open class Chart: UIView {
         var segments: [ChartLineSegment] = []
         var segment: ChartLineSegment = []
 
-        line.enumerated().forEach { (i, point) in
+        for (i, point) in line.enumerated() {
             segment.append(point)
             if i < line.count - 1 {
                 let nextPoint = line[i+1]
