@@ -239,7 +239,6 @@ open class Chart: UIView {
 
     convenience public init() {
         self.init(frame: .zero)
-        commonInit()
     }
 
     private func commonInit() {
