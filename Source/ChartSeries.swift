@@ -14,22 +14,22 @@ open class ChartSeries {
     /**
     The data used for the chart series.
     */
-    open var data: [(x: Double, y: Double)]
+    public var data: [(x: Double, y: Double)]
 
     /**
     When set to `false`, will hide the series line. Useful for drawing only the area with `area=true`.
     */
-    open var line: Bool = true
+    public var line: Bool = true
 
     /**
     Draws an area below the series line.
     */
-    open var area: Bool = false
+    public var area: Bool = false
 
     /**
     The series color.
     */
-    open var color: UIColor = ChartColors.blueColor() {
+    public var color: UIColor = ChartColors.blueColor() {
         didSet {
             colors = (above: color, below: color, 0)
         }
@@ -38,7 +38,7 @@ open class ChartSeries {
     /**
     A tuple to specify the color above or below the zero
     */
-    open var colors: (
+    public var colors: (
         above: UIColor,
         below: UIColor,
         zeroLevel: Double

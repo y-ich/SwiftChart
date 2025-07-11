@@ -7,7 +7,7 @@
 
 import UIKit
 
-public protocol ChartDelegate: class {
+public protocol ChartDelegate: AnyObject {
 
     /**
     Tells the delegate that the specified chart has been touched.
@@ -43,7 +43,7 @@ public protocol ChartDelegate: class {
 /**
 Represent the x- and the y-axis values for each point in a chart series.
 */
-typealias ChartPoint = (x: Double, y: Double)
+public typealias ChartPoint = (x: Double, y: Double)
 
 /**
 Set the a x-label orientation.
@@ -54,17 +54,17 @@ public enum ChartLabelOrientation {
 }
 
 @IBDesignable
-open class Chart: UIControl {
+open class Chart: UIView {
 
     // MARK: Options
 
     @IBInspectable
-    open var identifier: String?
+    public var identifier: String?
 
     /**
     Series to display in the chart.
     */
-    open var series: [ChartSeries] = [] {
+    public var series: [ChartSeries] = [] {
       didSet {
         DispatchQueue.main.async {
           self.setNeedsDisplay()
@@ -76,151 +76,151 @@ open class Chart: UIControl {
     The values to display as labels on the x-axis. You can format these values  with the `xLabelFormatter` attribute. 
     As default, it will display the values of the series which has the most data.
     */
-    open var xLabels: [Double]?
+    public var xLabels: [Double]?
 
     /**
     Formatter for the labels on the x-axis. `index` represents the `xLabels` index, `value` its value.
     */
-    open var xLabelsFormatter = { (labelIndex: Int, labelValue: Double) -> String in
+    public var xLabelsFormatter = { (labelIndex: Int, labelValue: Double) -> String in
         String(Int(labelValue))
     }
 
     /**
     Text alignment for the x-labels.
     */
-    open var xLabelsTextAlignment: NSTextAlignment = .left
+    public var xLabelsTextAlignment: NSTextAlignment = .left
 
     /**
     Orientation for the x-labels.
     */
-    open var xLabelsOrientation: ChartLabelOrientation = .horizontal
+    public var xLabelsOrientation: ChartLabelOrientation = .horizontal
 
     /**
     Skip the last x-label. Setting this to false may make the label overflow the frame width.
     */
-    open var xLabelsSkipLast: Bool = true
+    public var xLabelsSkipLast: Bool = true
 
     /**
     Values to display as labels of the y-axis. If not specified, will display the lowest, the middle and the highest
     values.
     */
-    open var yLabels: [Double]?
+    public var yLabels: [Double]?
 
     /**
     Formatter for the labels on the y-axis.
     */
-    open var yLabelsFormatter = { (labelIndex: Int, labelValue: Double) -> String in
+    public var yLabelsFormatter = { (labelIndex: Int, labelValue: Double) -> String in
         String(Int(labelValue))
     }
 
     /**
     Displays the y-axis labels on the right side of the chart.
     */
-    open var yLabelsOnRightSide: Bool = false
+    public var yLabelsOnRightSide: Bool = false
 
     /**
     Font used for the labels.
     */
-    open var labelFont: UIFont? = UIFont.systemFont(ofSize: 12)
+    public var labelFont: UIFont? = UIFont.systemFont(ofSize: 12)
 
     /**
     The color used for the labels.
     */
     @IBInspectable
-    open var labelColor: UIColor = UIColor.black
+    public var labelColor: UIColor = UIColor.black
 
     /**
     Color for the axes.
     */
     @IBInspectable
-    open var axesColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
+    public var axesColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
 
     /**
     Color for the grid.
     */
     @IBInspectable
-    open var gridColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
+    public var gridColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
     /**
     Enable the lines for the labels on the x-axis
     */
-    open var showXLabelsAndGrid: Bool = true
+    public var showXLabelsAndGrid: Bool = true
     /**
     Enable the lines for the labels on the y-axis
     */
-    open var showYLabelsAndGrid: Bool = true
+    public var showYLabelsAndGrid: Bool = true
 
     /**
     Height of the area at the bottom of the chart, containing the labels for the x-axis.
     */
-    open var bottomInset: CGFloat = 20
+    public var bottomInset: CGFloat = 20
 
     /**
     Height of the area at the top of the chart, acting a padding to make place for the top y-axis label.
     */
-    open var topInset: CGFloat = 20
+    public var topInset: CGFloat = 20
 
     /**
     Width of the chart's lines.
     */
     @IBInspectable
-    open var lineWidth: CGFloat = 2
+    public var lineWidth: CGFloat = 2
 
     /**
     Delegate for listening to Chart touch events.
     */
-    weak open var delegate: ChartDelegate?
+    weak public var delegate: ChartDelegate?
 
     /**
     Custom minimum value for the x-axis.
     */
-    open var minX: Double?
+    public var minX: Double?
 
     /**
     Custom minimum value for the y-axis.
     */
-    open var minY: Double?
+    public var minY: Double?
 
     /**
     Custom maximum value for the x-axis.
     */
-    open var maxX: Double?
+    public var maxX: Double?
 
     /**
     Custom maximum value for the y-axis.
     */
-    open var maxY: Double?
+    public var maxY: Double?
 
     /**
     Color for the highlight line.
     */
-    open var highlightLineColor = UIColor.gray
+    public var highlightLineColor = UIColor.gray
 
     /**
     Width for the highlight line.
     */
-    open var highlightLineWidth: CGFloat = 0.5
+    public var highlightLineWidth: CGFloat = 0.5
 
     /**
     Hide the highlight line when touch event ends, e.g. when stop swiping over the chart
     */
-    open var hideHighlightLineOnTouchEnd = false
+    public var hideHighlightLineOnTouchEnd = false
 
     /**
     Alpha component for the area color.
     */
-    open var areaAlphaComponent: CGFloat = 0.1
+    public var areaAlphaComponent: CGFloat = 0.1
 
     // MARK: Private variables
 
-    fileprivate var highlightShapeLayer: CAShapeLayer!
-    fileprivate var layerStore: [CAShapeLayer] = []
+    private var highlightShapeLayer: CAShapeLayer!
+    private var layerStore: [CAShapeLayer] = []
 
-    fileprivate var drawingHeight: CGFloat!
-    fileprivate var drawingWidth: CGFloat!
+    private var drawingHeight: CGFloat!
+    private var drawingWidth: CGFloat!
 
     // Minimum and maximum values represented in the chart
-    fileprivate var min: ChartPoint!
-    fileprivate var max: ChartPoint!
+    private var min: ChartPoint!
+    private var max: ChartPoint!
 
     // Represent a set of points corresponding to a segment line on the chart.
     typealias ChartLineSegment = [ChartPoint]
@@ -294,7 +294,7 @@ open class Chart: UIControl {
         return series.data[dataIndex!].y
     }
 
-    fileprivate func drawIBPlaceholder() {
+    private func drawIBPlaceholder() {
         let placeholder = UIView(frame: self.frame)
         placeholder.backgroundColor = UIColor(red: 0.93, green: 0.93, blue: 0.93, alpha: 1)
         let label = UILabel()
@@ -309,7 +309,7 @@ open class Chart: UIControl {
         addSubview(placeholder)
     }
 
-    fileprivate func drawChart() {
+    private func drawChart() {
 
         drawingHeight = bounds.height - bottomInset - topInset
         drawingWidth = bounds.width
@@ -363,7 +363,7 @@ open class Chart: UIControl {
 
     // MARK: - Scaling
 
-    fileprivate func getMinMax() -> (min: ChartPoint, max: ChartPoint) {
+    private func getMinMax() -> (min: ChartPoint, max: ChartPoint) {
         // Start with user-provided values
 
         var min = (x: minX, y: minY)
@@ -410,7 +410,7 @@ open class Chart: UIControl {
         return (min: (x: min.x!, y: min.y!), max: (x: max.x!, max.y!))
     }
 
-    fileprivate func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
+    private func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
         let width = Double(drawingWidth)
 
         var factor: Double
@@ -424,7 +424,7 @@ open class Chart: UIControl {
         return scaled
     }
 
-    fileprivate func scaleValuesOnYAxis(_ values: [Double]) -> [Double] {
+    private func scaleValuesOnYAxis(_ values: [Double]) -> [Double] {
         let height = Double(drawingHeight)
         var factor: Double
         if max.y - min.y == 0 {
@@ -438,7 +438,7 @@ open class Chart: UIControl {
         return scaled
     }
 
-    fileprivate func scaleValueOnYAxis(_ value: Double) -> Double {
+    private func scaleValueOnYAxis(_ value: Double) -> Double {
         let height = Double(drawingHeight)
         var factor: Double
         if max.y - min.y == 0 {
@@ -451,7 +451,7 @@ open class Chart: UIControl {
         return scaled
     }
 
-    fileprivate func getZeroValueOnYAxis(zeroLevel: Double) -> Double {
+    private func getZeroValueOnYAxis(zeroLevel: Double) -> Double {
         if min.y > zeroLevel {
             return scaleValueOnYAxis(min.y)
         } else {
@@ -461,7 +461,7 @@ open class Chart: UIControl {
 
     // MARK: - Drawings
 
-    fileprivate func drawLine(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
+    private func drawLine(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
         // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= self.scaleValueOnYAxis(series[seriesIndex].colors.zeroLevel)
         let path = CGMutablePath()
@@ -489,7 +489,7 @@ open class Chart: UIControl {
         layerStore.append(lineLayer)
     }
 
-    fileprivate func drawArea(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
+    private func drawArea(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
         // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= self.scaleValueOnYAxis(series[seriesIndex].colors.zeroLevel)
         let area = CGMutablePath()
@@ -516,7 +516,7 @@ open class Chart: UIControl {
         layerStore.append(areaLayer)
     }
 
-    fileprivate func drawAxes() {
+    private func drawAxes() {
         let context = UIGraphicsGetCurrentContext()!
         context.setStrokeColor(axesColor.cgColor)
         context.setLineWidth(0.5)
@@ -550,7 +550,7 @@ open class Chart: UIControl {
         context.strokePath()
     }
 
-    fileprivate func drawLabelsAndGridOnXAxis() {
+    private func drawLabelsAndGridOnXAxis() {
         let context = UIGraphicsGetCurrentContext()!
         context.setStrokeColor(gridColor.cgColor)
         context.setLineWidth(0.5)
@@ -621,7 +621,7 @@ open class Chart: UIControl {
         }
     }
 
-    fileprivate func drawLabelsAndGridOnYAxis() {
+    private func drawLabelsAndGridOnYAxis() {
         let context = UIGraphicsGetCurrentContext()!
         context.setStrokeColor(gridColor.cgColor)
         context.setLineWidth(0.5)
@@ -679,7 +679,7 @@ open class Chart: UIControl {
 
     // MARK: - Touch events
 
-    fileprivate func drawHighlightLineFromLeftPosition(_ left: CGFloat) {
+    private func drawHighlightLineFromLeftPosition(_ left: CGFloat) {
         if let shapeLayer = highlightShapeLayer {
             // Use line already created
             let path = CGMutablePath()
@@ -762,17 +762,17 @@ open class Chart: UIControl {
 
     // MARK: - Utilities
 
-    fileprivate func valueFromPointAtX(_ x: CGFloat) -> Double {
+    private func valueFromPointAtX(_ x: CGFloat) -> Double {
         let value = ((max.x-min.x) / Double(drawingWidth)) * Double(x) + min.x
         return value
     }
 
-    fileprivate func valueFromPointAtY(_ y: CGFloat) -> Double {
+    private func valueFromPointAtY(_ y: CGFloat) -> Double {
         let value = ((max.y - min.y) / Double(drawingHeight)) * Double(y) + min.y
         return -value
     }
 
-    fileprivate class func findClosestInValues(
+    private class func findClosestInValues(
         _ values: [Double],
         forValue value: Double
     ) -> (
@@ -807,7 +807,7 @@ open class Chart: UIControl {
     Segment a line in multiple lines when the line touches the x-axis, i.e. separating
     positive from negative values.
     */
-    fileprivate class func segmentLine(_ line: ChartLineSegment, zeroLevel: Double) -> [ChartLineSegment] {
+    private class func segmentLine(_ line: ChartLineSegment, zeroLevel: Double) -> [ChartLineSegment] {
         var segments: [ChartLineSegment] = []
         var segment: ChartLineSegment = []
 
@@ -834,7 +834,7 @@ open class Chart: UIControl {
     /**
     Return the intersection of a line between two points and 'y = level' line
     */
-    fileprivate class func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
+    private class func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
         let dy1 = level - p1.y
         let dy2 = level - p2.y
         return (x: (p2.x * dy1 - p1.x * dy2) / (dy1 - dy2), y: level)
