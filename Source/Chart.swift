@@ -219,8 +219,8 @@ open class Chart: UIView {
     private var drawingWidth: CGFloat!
 
     // Minimum and maximum values represented in the chart
-    private var min: ChartPoint!
-    private var max: ChartPoint!
+    private var min: ChartPoint = (x: 0, y: 0)
+    private var max: ChartPoint = (x: 0, y: 0)
 
     // Represent a set of points corresponding to a segment line on the chart.
     typealias ChartLineSegment = [ChartPoint]
