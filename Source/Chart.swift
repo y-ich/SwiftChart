@@ -771,7 +771,7 @@ open class Chart: UIView {
         return -value
     }
 
-    private class func findClosestInValues(
+    private static func findClosestInValues(
         _ values: [Double],
         forValue value: Double
     ) -> (
@@ -806,7 +806,7 @@ open class Chart: UIView {
     Segment a line in multiple lines when the line touches the x-axis, i.e. separating
     positive from negative values.
     */
-    private class func segmentLine(_ line: ChartLineSegment, zeroLevel: Double) -> [ChartLineSegment] {
+    private static func segmentLine(_ line: ChartLineSegment, zeroLevel: Double) -> [ChartLineSegment] {
         var segments: [ChartLineSegment] = []
         var segment: ChartLineSegment = []
 
@@ -833,7 +833,7 @@ open class Chart: UIView {
     /**
     Return the intersection of a line between two points and 'y = level' line
     */
-    private class func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
+    private static func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
         let dy1 = level - p1.y
         let dy2 = level - p2.y
         return (x: (p2.x * dy1 - p1.x * dy2) / (dy1 - dy2), y: level)
