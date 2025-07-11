@@ -247,11 +247,7 @@ open class Chart: UIView {
     }
 
     override open func draw(_ rect: CGRect) {
-        #if TARGET_INTERFACE_BUILDER
-            drawIBPlaceholder()
-            #else
-            drawChart()
-        #endif
+        drawChart()
     }
 
     /**
@@ -293,7 +289,7 @@ open class Chart: UIView {
         return series.data[dataIndex!].y
     }
 
-    private func drawIBPlaceholder() {
+    override open func prepareForInterfaceBuilder() {
         let placeholder = UIView(frame: self.frame)
         placeholder.backgroundColor = UIColor(red: 0.93, green: 0.93, blue: 0.93, alpha: 1)
         let label = UILabel()
