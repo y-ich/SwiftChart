@@ -67,7 +67,7 @@ open class Chart: UIView {
     public var series: [ChartSeries] = [] {
       didSet {
         DispatchQueue.main.async {
-          self.setNeedsDisplay()
+          self.setNeedsLayout()
         }
       }
     }
@@ -246,7 +246,8 @@ open class Chart: UIView {
         contentMode = .redraw // redraw rects on bounds change
     }
 
-    override open func draw(_ rect: CGRect) {
+    override open func layoutSubviews() {
+        super.layoutSubviews()
         drawChart()
     }
 
@@ -353,7 +354,6 @@ open class Chart: UIView {
         if showYLabelsAndGrid && (yLabels != nil || series.count > 0) {
             drawLabelsAndGridOnYAxis()
         }
-
     }
 
     // MARK: - Scaling
@@ -512,43 +512,44 @@ open class Chart: UIView {
     }
 
     private func drawAxes() {
-        let context = UIGraphicsGetCurrentContext()!
-        context.setStrokeColor(axesColor.cgColor)
-        context.setLineWidth(0.5)
+        let path = CGMutablePath()
 
         // horizontal axis at the bottom
-        context.move(to: CGPoint(x: CGFloat(0), y: drawingHeight + topInset))
-        context.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: drawingHeight + topInset))
-        context.strokePath()
+        path.move(to: CGPoint(x: CGFloat(0), y: drawingHeight + topInset))
+        path.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: drawingHeight + topInset))
 
         // horizontal axis at the top
-        context.move(to: CGPoint(x: CGFloat(0), y: CGFloat(0)))
-        context.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: CGFloat(0)))
-        context.strokePath()
+        path.move(to: CGPoint(x: CGFloat(0), y: CGFloat(0)))
+        path.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: CGFloat(0)))
 
         // horizontal axis when y = 0
         if min.y < 0 && max.y > 0 {
             let y = CGFloat(getZeroValueOnYAxis(zeroLevel: 0))
-            context.move(to: CGPoint(x: CGFloat(0), y: y))
-            context.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: y))
-            context.strokePath()
+            path.move(to: CGPoint(x: CGFloat(0), y: y))
+            path.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: y))
         }
 
         // vertical axis on the left
-        context.move(to: CGPoint(x: CGFloat(0), y: CGFloat(0)))
-        context.addLine(to: CGPoint(x: CGFloat(0), y: drawingHeight + topInset))
-        context.strokePath()
+        path.move(to: CGPoint(x: CGFloat(0), y: CGFloat(0)))
+        path.addLine(to: CGPoint(x: CGFloat(0), y: drawingHeight + topInset))
 
         // vertical axis on the right
-        context.move(to: CGPoint(x: CGFloat(drawingWidth), y: CGFloat(0)))
-        context.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: drawingHeight + topInset))
-        context.strokePath()
+        path.move(to: CGPoint(x: CGFloat(drawingWidth), y: CGFloat(0)))
+        path.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: drawingHeight + topInset))
+        
+        let axesLayer = CAShapeLayer()
+        axesLayer.frame = self.bounds
+        axesLayer.path = path
+        axesLayer.strokeColor = axesColor.cgColor
+        axesLayer.lineWidth = 0.5
+
+        self.layer.addSublayer(axesLayer)
+
+        layerStore.append(axesLayer)
     }
 
     private func drawLabelsAndGridOnXAxis() {
-        let context = UIGraphicsGetCurrentContext()!
-        context.setStrokeColor(gridColor.cgColor)
-        context.setLineWidth(0.5)
+        let path = CGMutablePath()
 
         var labels: [Double]
         if xLabels == nil {
@@ -568,9 +569,8 @@ open class Chart: UIView {
             // Add vertical grid for each label, except axes on the left and right
 
             if x != 0 && x != drawingWidth {
-                context.move(to: CGPoint(x: x, y: CGFloat(0)))
-                context.addLine(to: CGPoint(x: x, y: bounds.height))
-                context.strokePath()
+                path.move(to: CGPoint(x: x, y: CGFloat(0)))
+                path.addLine(to: CGPoint(x: x, y: bounds.height))
             }
 
             if xLabelsSkipLast && isLastLabel {
@@ -614,12 +614,20 @@ open class Chart: UIView {
             }
             self.addSubview(label)
         }
+        let gridLayer = CAShapeLayer()
+        gridLayer.frame = self.bounds
+        gridLayer.path = path
+        gridLayer.strokeColor = gridColor.cgColor
+        gridLayer.lineWidth = 0.5
+
+        self.layer.addSublayer(gridLayer)
+
+        layerStore.append(gridLayer)
     }
 
     private func drawLabelsAndGridOnYAxis() {
-        let context = UIGraphicsGetCurrentContext()!
-        context.setStrokeColor(gridColor.cgColor)
-        context.setLineWidth(0.5)
+        let dashed = CGMutablePath()
+        let solid = CGMutablePath()
 
         var labels: [Double]
         if yLabels == nil {
@@ -641,16 +649,13 @@ open class Chart: UIView {
 
             // Add horizontal grid for each label, but not over axes
             if y != drawingHeight + topInset && y != zero {
-
-                context.move(to: CGPoint(x: CGFloat(0), y: y))
-                context.addLine(to: CGPoint(x: self.bounds.width, y: y))
                 if labels[i] != 0 {
-                    // Horizontal grid for 0 is not dashed
-                    context.setLineDash(phase: CGFloat(0), lengths: [CGFloat(5)])
+                    dashed.move(to: CGPoint(x: CGFloat(0), y: y))
+                    dashed.addLine(to: CGPoint(x: self.bounds.width, y: y))
                 } else {
-                    context.setLineDash(phase: CGFloat(0), lengths: [])
+                    solid.move(to: CGPoint(x: CGFloat(0), y: y))
+                    solid.addLine(to: CGPoint(x: self.bounds.width, y: y))
                 }
-                context.strokePath()
             }
 
             let label = UILabel(frame: CGRect(x: padding, y: y, width: 0, height: 0))
@@ -669,7 +674,28 @@ open class Chart: UIView {
 
             self.addSubview(label)
         }
-        UIGraphicsEndImageContext()
+
+        let dashedLayer = CAShapeLayer()
+        dashedLayer.frame = self.bounds
+        dashedLayer.path = dashed
+        dashedLayer.strokeColor = gridColor.cgColor
+        dashedLayer.lineWidth = 0.5
+        dashedLayer.lineDashPattern = [5]
+        dashedLayer.lineDashPhase = 0
+
+        self.layer.addSublayer(dashedLayer)
+
+        layerStore.append(dashedLayer)
+
+        let solidLayer = CAShapeLayer()
+        solidLayer.frame = self.bounds
+        solidLayer.path = solid
+        solidLayer.strokeColor = gridColor.cgColor
+        solidLayer.lineWidth = 0.5
+
+        self.layer.addSublayer(solidLayer)
+
+        layerStore.append(solidLayer)
     }
 
     // MARK: - Touch events
