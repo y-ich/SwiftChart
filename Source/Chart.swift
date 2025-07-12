@@ -66,6 +66,7 @@ open class Chart: UIView {
     */
     public var series: [ChartSeries] = [] {
       didSet {
+        recalcMinMax()
         DispatchQueue.main.async {
           self.setNeedsLayout()
         }
@@ -219,8 +220,8 @@ open class Chart: UIView {
     private var drawingWidth: CGFloat!
 
     // Minimum and maximum values represented in the chart
-    private var min: ChartPoint = (x: 0, y: 0)
-    private var max: ChartPoint = (x: 0, y: 0)
+    private var min: ChartPoint = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
+    private var max: ChartPoint = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
 
     // Represent a set of points corresponding to a segment line on the chart.
     typealias ChartLineSegment = [ChartPoint]
@@ -256,6 +257,10 @@ open class Chart: UIView {
     */
     open func add(_ series: ChartSeries) {
         self.series.append(series)
+        updateMinMax(by: series)
+        DispatchQueue.main.async {
+            self.setNeedsLayout()
+        }
     }
 
     /**
@@ -290,6 +295,15 @@ open class Chart: UIView {
         return series.data[dataIndex!].y
     }
 
+    open func add(point: ChartPoint, to seriesIndex: Int) {
+        let series = self.series[seriesIndex]
+        series.data.append(point)
+        updateMinMax(by: point)
+        DispatchQueue.main.async {
+            self.setNeedsLayout()
+        }
+    }
+
     override open func prepareForInterfaceBuilder() {
         let placeholder = UIView(frame: self.frame)
         placeholder.backgroundColor = UIColor(red: 0.93, green: 0.93, blue: 0.93, alpha: 1)
@@ -309,10 +323,6 @@ open class Chart: UIView {
 
         drawingHeight = bounds.height - bottomInset - topInset
         drawingWidth = bounds.width
-
-        let minMax = getMinMax()
-        min = minMax.min
-        max = minMax.max
 
         highlightShapeLayer = nil
 
@@ -355,7 +365,29 @@ open class Chart: UIView {
 
     // MARK: - Scaling
 
-    private func getMinMax() -> (min: ChartPoint, max: ChartPoint) {
+    private func updateMinMax(by point: ChartPoint) {
+        if point.x < min.x { min.x = point.x }
+        if point.y < min.y { min.y = point.y }
+        if point.x > max.x { max.x = point.x }
+        if point.y > max.y { max.y = point.y }
+    }
+
+    private func updateMinMax(by series: ChartSeries) {
+        let xValues =  series.data.map { $0.x }
+        let yValues =  series.data.map { $0.y }
+
+        let newMinX = xValues.minOrZero()
+        let newMinY = yValues.minOrZero()
+        let newMaxX = xValues.maxOrZero()
+        let newMaxY = yValues.maxOrZero()
+
+        if newMinX < min.x { min.x = newMinX }
+        if newMinY < min.y { min.y = newMinY }
+        if newMaxX > max.x { max.x = newMaxX }
+        if newMaxY > max.y { max.y = newMaxY }
+    }
+
+    private func recalcMinMax() {
         // Start with user-provided values
 
         var min = (x: minX, y: minY)
@@ -399,7 +431,8 @@ open class Chart: UIView {
         if max.x == nil { max.x = 0 }
         if max.y == nil { max.y = 0 }
 
-        return (min: (x: min.x!, y: min.y!), max: (x: max.x!, max.y!))
+        self.min = (x: min.x!, y: min.y!)
+        self.max = (x: max.x!, y: max.y!)
     }
 
     private func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
@@ -708,7 +741,7 @@ open class Chart: UIView {
             }
 
             // フレーム設定
-            var frame = CGRect(x: xPosition,
+            let frame = CGRect(x: xPosition,
                             y: y - size.height, // グリッド線の上に表示
                             width: size.width,
                             height: size.height)
