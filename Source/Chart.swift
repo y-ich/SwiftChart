@@ -213,7 +213,7 @@ open class Chart: UIView {
     // MARK: Private variables
 
     private var highlightShapeLayer: CAShapeLayer!
-    private var layerStore: [CALayer] = []
+    public var layerStore: [CALayer] = [] // protectedがいいが、Swiftにはprotectedがない
 
     private var drawingHeight: CGFloat!
     private var drawingWidth: CGFloat!
@@ -430,7 +430,20 @@ open class Chart: UIView {
         return scaled
     }
 
-    private func scaleValueOnYAxis(_ value: Double) -> Double {
+    public func scaleValueOnXAxis(_ value: Double) -> Double {
+        let width = Double(drawingWidth)
+        var factor: Double
+        if max.x - min.x == 0 {
+            factor = 0
+        } else {
+            factor = width / (max.x - min.x)
+        }
+
+        let scaled = factor * (value - min.x)
+        return scaled
+    }
+
+    public func scaleValueOnYAxis(_ value: Double) -> Double {
         let height = Double(drawingHeight)
         var factor: Double
         if max.y - min.y == 0 {
