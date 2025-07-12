@@ -67,9 +67,6 @@ open class Chart: UIView {
     public var series: [ChartSeries] = [] {
       didSet {
         recalcMinMax()
-        DispatchQueue.main.async {
-          self.setNeedsLayout()
-        }
       }
     }
 
@@ -174,22 +171,46 @@ open class Chart: UIView {
     /**
     Custom minimum value for the x-axis.
     */
-    public var minX: Double?
+    public var minX: Double? {
+        didSet {
+            if let minX {
+                min.x = Swift.min(min.x, minX)
+            }
+        }
+    }
 
     /**
     Custom minimum value for the y-axis.
     */
-    public var minY: Double?
+    public var minY: Double? {
+        didSet {
+            if let minY {
+                min.y = Swift.min(min.y, minY)
+            }
+        }
+    }
 
     /**
     Custom maximum value for the x-axis.
     */
-    public var maxX: Double?
+    public var maxX: Double? {
+        didSet {
+            if let maxX {
+                max.x = Swift.max(max.x, maxX)
+            }
+        }
+    }
 
     /**
     Custom maximum value for the y-axis.
     */
-    public var maxY: Double?
+    public var maxY: Double? {
+        didSet {
+            if let maxY {
+                max.y = Swift.max(max.y, maxY)
+            }
+        }
+    }
 
     /**
     Color for the highlight line.
@@ -258,9 +279,6 @@ open class Chart: UIView {
     open func add(_ series: ChartSeries) {
         self.series.append(series)
         updateMinMax(by: series)
-        DispatchQueue.main.async {
-            self.setNeedsLayout()
-        }
     }
 
     /**
@@ -277,6 +295,8 @@ open class Chart: UIView {
     */
     open func removeSeriesAt(_ index: Int) {
         series.remove(at: index)
+        min = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
+        max = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
     }
 
     /**
@@ -299,9 +319,6 @@ open class Chart: UIView {
         let series = self.series[seriesIndex]
         series.data.append(point)
         updateMinMax(by: point)
-        DispatchQueue.main.async {
-            self.setNeedsLayout()
-        }
     }
 
     override open func prepareForInterfaceBuilder() {
@@ -390,49 +407,35 @@ open class Chart: UIView {
     private func recalcMinMax() {
         // Start with user-provided values
 
-        var min = (x: minX, y: minY)
-        var max = (x: maxX, y: maxY)
+        min = (x: minX ?? CGFloat.greatestFiniteMagnitude, y: minY ?? CGFloat.greatestFiniteMagnitude)
+        max = (x: maxX ?? -CGFloat.greatestFiniteMagnitude, y: maxY ?? -CGFloat.greatestFiniteMagnitude)
 
         // Check in datasets
 
         for series in self.series {
+            if series.data.count == 0 {
+                continue
+            }
             let xValues =  series.data.map { $0.x }
             let yValues =  series.data.map { $0.y }
 
-            let newMinX = xValues.minOrZero()
-            let newMinY = yValues.minOrZero()
-            let newMaxX = xValues.maxOrZero()
-            let newMaxY = yValues.maxOrZero()
-
-            if min.x == nil || newMinX < min.x! { min.x = newMinX }
-            if min.y == nil || newMinY < min.y! { min.y = newMinY }
-            if max.x == nil || newMaxX > max.x! { max.x = newMaxX }
-            if max.y == nil || newMaxY > max.y! { max.y = newMaxY }
+            min.x = Swift.min(min.x, xValues.min()!)
+            min.y = Swift.min(min.y, yValues.min()!)
+            max.x = Swift.max(max.x, xValues.max()!)
+            max.y = Swift.max(max.y, yValues.max()!)
         }
 
         // Check in labels
 
-        if let xLabels = self.xLabels {
-            let newMinX = xLabels.minOrZero()
-            let newMaxX = xLabels.maxOrZero()
-            if min.x == nil || newMinX < min.x! { min.x = newMinX }
-            if max.x == nil || newMaxX > max.x! { max.x = newMaxX }
+        if let xLabels = self.xLabels, xLabels.count > 0 {
+            min.x = Swift.min(min.x, xLabels.min()!)
+            max.x = Swift.max(max.x, xLabels.max()!)
         }
 
-        if let yLabels = self.yLabels {
-            let newMinY = yLabels.minOrZero()
-            let newMaxY = yLabels.maxOrZero()
-            if min.y == nil || newMinY < min.y! { min.y = newMinY }
-            if max.y == nil || newMaxY > max.y! { max.y = newMaxY }
+        if let yLabels = self.yLabels, yLabels.count > 0 {
+            min.y = Swift.min(min.y, yLabels.min()!)
+            max.y = Swift.max(max.y, yLabels.max()!)
         }
-
-        if min.x == nil { min.x = 0 }
-        if min.y == nil { min.y = 0 }
-        if max.x == nil { max.x = 0 }
-        if max.y == nil { max.y = 0 }
-
-        self.min = (x: min.x!, y: min.y!)
-        self.max = (x: max.x!, y: max.y!)
     }
 
     private func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
