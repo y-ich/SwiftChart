@@ -22,6 +22,11 @@ open class ChartSeries {
     public var line: Bool = true
 
     /**
+    The line width of the series. If `nil`, the default line width in Chart will be used.
+    */
+    public var lineWidth: CGFloat? = nil
+
+    /**
     Draws an area below the series line.
     */
     public var area: Bool = false

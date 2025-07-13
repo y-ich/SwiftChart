@@ -522,7 +522,7 @@ open class Chart: UIView {
             lineLayer.strokeColor = series[seriesIndex].colors.below.cgColor
         }
         lineLayer.fillColor = nil
-        lineLayer.lineWidth = lineWidth
+        lineLayer.lineWidth = series[seriesIndex].lineWidth ?? lineWidth
         lineLayer.lineJoin = CAShapeLayerLineJoin.bevel
 
         self.layer.addSublayer(lineLayer)
