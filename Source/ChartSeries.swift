@@ -50,11 +50,7 @@ open class ChartSeries {
     ) = (above: ChartColors.blueColor(), below: ChartColors.redColor(), 0)
 
     public init(_ data: [Double]) {
-        self.data = []
-        data.enumerated().forEach { (x, y) in
-            let point: (x: Double, y: Double) = (x: Double(x), y: y)
-            self.data.append(point)
-        }
+        self.data = data.enumerated().map { (x: Double($0.offset), y: $0.element) }
     }
 
     public init(data: [(x: Double, y: Double)]) {

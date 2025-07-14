@@ -235,7 +235,6 @@ open class Chart: UIView {
     // MARK: Private variables
 
     private var highlightShapeLayer: CAShapeLayer!
-    public var layerStore: [CALayer] = [] // protectedがいいが、Swiftにはprotectedがない
 
     private var drawingHeight: CGFloat!
     private var drawingWidth: CGFloat!
@@ -345,10 +344,9 @@ open class Chart: UIView {
 
         // Remove things before drawing, e.g. when changing orientation
 
-        for layer in layerStore {
+        for layer in layer.sublayers ?? [] {
             layer.removeFromSuperlayer()
         }
-        layerStore.removeAll()
 
         // Draw content
 
@@ -525,9 +523,7 @@ open class Chart: UIView {
         lineLayer.lineWidth = series[seriesIndex].lineWidth ?? lineWidth
         lineLayer.lineJoin = CAShapeLayerLineJoin.bevel
 
-        self.layer.addSublayer(lineLayer)
-
-        layerStore.append(lineLayer)
+        layer.addSublayer(lineLayer)
     }
 
     private func drawArea(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
@@ -552,9 +548,7 @@ open class Chart: UIView {
         }
         areaLayer.lineWidth = 0
 
-        self.layer.addSublayer(areaLayer)
-
-        layerStore.append(areaLayer)
+        layer.addSublayer(areaLayer)
     }
 
     private func drawAxes() {
@@ -589,9 +583,7 @@ open class Chart: UIView {
         axesLayer.strokeColor = axesColor.cgColor
         axesLayer.lineWidth = 0.5
 
-        self.layer.addSublayer(axesLayer)
-
-        layerStore.append(axesLayer)
+        layer.addSublayer(axesLayer)
     }
 
     private func drawLabelsAndGridOnXAxis() {
@@ -675,7 +667,6 @@ open class Chart: UIView {
 
             textLayer.frame = frame
             layer.addSublayer(textLayer)
-            layerStore.append(textLayer)
         }
         let gridLayer = CAShapeLayer()
         gridLayer.frame = self.bounds
@@ -683,9 +674,7 @@ open class Chart: UIView {
         gridLayer.strokeColor = gridColor.cgColor
         gridLayer.lineWidth = 0.5
 
-        self.layer.addSublayer(gridLayer)
-
-        layerStore.append(gridLayer)
+        layer.addSublayer(gridLayer)
     }
 
     private func drawLabelsAndGridOnYAxis() {
@@ -751,7 +740,6 @@ open class Chart: UIView {
 
             textLayer.frame = frame
             layer.addSublayer(textLayer)
-            layerStore.append(textLayer)
         }
 
         let dashedLayer = CAShapeLayer()
@@ -762,9 +750,7 @@ open class Chart: UIView {
         dashedLayer.lineDashPattern = [5]
         dashedLayer.lineDashPhase = 0
 
-        self.layer.addSublayer(dashedLayer)
-
-        layerStore.append(dashedLayer)
+        layer.addSublayer(dashedLayer)
 
         let solidLayer = CAShapeLayer()
         solidLayer.frame = self.bounds
@@ -772,9 +758,7 @@ open class Chart: UIView {
         solidLayer.strokeColor = gridColor.cgColor
         solidLayer.lineWidth = 0.5
 
-        self.layer.addSublayer(solidLayer)
-
-        layerStore.append(solidLayer)
+        layer.addSublayer(solidLayer)
     }
 
     // MARK: - Touch events
@@ -802,7 +786,6 @@ open class Chart: UIView {
 
             highlightShapeLayer = shapeLayer
             layer.addSublayer(shapeLayer)
-            layerStore.append(shapeLayer)
         }
     }
 
