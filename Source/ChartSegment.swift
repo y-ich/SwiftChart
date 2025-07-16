@@ -10,20 +10,18 @@ final class ChartSegment {
     }
     
     func getLineLayer(width: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
-        self.lineLayer = drawLine(width: width, with: colors, on: chart)
+        drawLine(width: width, with: colors, on: chart)
         return lineLayer!
     }
     
     func getAreaLayer(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
-        self.areaLayer = drawArea(with: colors, on: chart)
+        drawArea(with: colors, on: chart)
         return areaLayer!
     }
     
-    private func drawLine(width: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) -> CAShapeLayer {
+    func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
-
-        // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let path = CGMutablePath()
         path.move(to: CGPoint(x: CGFloat(xValues.first!), y: CGFloat(yValues.first!)))
@@ -31,28 +29,14 @@ final class ChartSegment {
             let y = yValues[i]
             path.addLine(to: CGPoint(x: CGFloat(xValues[i]), y: CGFloat(y)))
         }
-
-        let lineLayer = CAShapeLayer()
-        lineLayer.frame = chart.bounds
-        lineLayer.path = path
-
-        if isAboveZeroLine {
-            lineLayer.strokeColor = colors.above.cgColor
-        } else {
-            lineLayer.strokeColor = colors.below.cgColor
-        }
-        lineLayer.fillColor = nil
-        lineLayer.lineWidth = width
-        lineLayer.lineJoin = CAShapeLayerLineJoin.bevel
-        
-        return lineLayer
+        lineLayer?.frame = chart.bounds
+        lineLayer?.path = path
+        lineLayer?.strokeColor = (isAboveZeroLine ? colors.above : colors.below).cgColor
     }
-
-    private func drawArea(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) -> CAShapeLayer {
+    
+    func setAreaPathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
-
-        // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let area = CGMutablePath()
         let zero = CGFloat(chart.getZeroValueOnYAxis(zeroLevel: colors.zeroLevel))
@@ -62,18 +46,23 @@ final class ChartSegment {
             area.addLine(to: CGPoint(x: CGFloat(xValues[i]), y: CGFloat(yValues[i])))
         }
         area.addLine(to: CGPoint(x: CGFloat(xValues.last!), y: zero))
+        lineLayer?.frame = chart.bounds
+        lineLayer?.path = area
+        lineLayer?.fillColor = (isAboveZeroLine ? colors.above : colors.below).withAlphaComponent(chart.areaAlphaComponent).cgColor
+    }
+    
+    private func drawLine(width: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+        lineLayer = CAShapeLayer()
+        lineLayer?.fillColor = nil
+        lineLayer?.lineWidth = width
+        lineLayer?.lineJoin = CAShapeLayerLineJoin.bevel
+        setLinePathAndColor(with: colors, on: chart)
+    }
 
-        let areaLayer = CAShapeLayer()
-        areaLayer.frame = chart.bounds
-        areaLayer.path = area
-        areaLayer.strokeColor = nil
-        if isAboveZeroLine {
-            areaLayer.fillColor = colors.above.withAlphaComponent(chart.areaAlphaComponent).cgColor
-        } else {
-            areaLayer.fillColor = colors.below.withAlphaComponent(chart.areaAlphaComponent).cgColor
-        }
-        areaLayer.lineWidth = 0
-        
-        return areaLayer
+    private func drawArea(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+        areaLayer = CAShapeLayer()
+        areaLayer?.strokeColor = nil
+        areaLayer?.lineWidth = 0
+        setAreaPathAndColor(with: colors, on: chart)
     }
 }
