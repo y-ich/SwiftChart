@@ -316,7 +316,7 @@ open class Chart: UIView {
 
     open func add(point: ChartPoint, to seriesIndex: Int) {
         let series = self.series[seriesIndex]
-        series.data.append(point)
+        series.append(point: point)
         updateMinMax(by: point)
     }
 
@@ -330,16 +330,16 @@ open class Chart: UIView {
         label.sizeToFit()
         label.frame.origin.x += frame.width/2 - (label.frame.width / 2)
         label.frame.origin.y += frame.height/2 - (label.frame.height / 2)
-
+        
         placeholder.addSubview(label)
         addSubview(placeholder)
     }
-
+    
     private func drawChart() {
 
         drawingHeight = bounds.height - bottomInset - topInset
         drawingWidth = bounds.width
-
+        
         highlightShapeLayer = nil
 
         // Remove things before drawing, e.g. when changing orientation
@@ -350,21 +350,9 @@ open class Chart: UIView {
 
         // Draw content
 
-        for (index, series) in self.series.enumerated() {
-
-            // Separate each line in multiple segments over and below the x axis
-            let segments = Chart.segmentLine(series.data as ChartLineSegment, zeroLevel: series.colors.zeroLevel)
-
-            for segment in segments {
-                let scaledXValues = scaleValuesOnXAxis( segment.map { $0.x } )
-                let scaledYValues = scaleValuesOnYAxis( segment.map { $0.y } )
-
-                if series.line {
-                    drawLine(scaledXValues, yValues: scaledYValues, seriesIndex: index)
-                }
-                if series.area {
-                    drawArea(scaledXValues, yValues: scaledYValues, seriesIndex: index)
-                }
+        for series in self.series {
+            for layer in series.createLayers(for: self) {
+                self.layer.addSublayer(layer)
             }
         }
 
@@ -436,7 +424,7 @@ open class Chart: UIView {
         }
     }
 
-    private func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
+    func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {
         let width = Double(drawingWidth)
 
         var factor: Double
@@ -450,7 +438,7 @@ open class Chart: UIView {
         return scaled
     }
 
-    private func scaleValuesOnYAxis(_ values: [Double]) -> [Double] {
+    func scaleValuesOnYAxis(_ values: [Double]) -> [Double] {
         let height = Double(drawingHeight)
         var factor: Double
         if max.y - min.y == 0 {
@@ -490,7 +478,7 @@ open class Chart: UIView {
         return scaled
     }
 
-    private func getZeroValueOnYAxis(zeroLevel: Double) -> Double {
+    func getZeroValueOnYAxis(zeroLevel: Double) -> Double {
         if min.y > zeroLevel {
             return scaleValueOnYAxis(min.y)
         } else {
@@ -499,57 +487,6 @@ open class Chart: UIView {
     }
 
     // MARK: - Drawings
-
-    private func drawLine(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
-        // YValues are "reverted" from top to bottom, so 'above' means <= level
-        let isAboveZeroLine = yValues.max()! <= self.scaleValueOnYAxis(series[seriesIndex].colors.zeroLevel)
-        let path = CGMutablePath()
-        path.move(to: CGPoint(x: CGFloat(xValues.first!), y: CGFloat(yValues.first!)))
-        for i in 1..<yValues.count {
-            let y = yValues[i]
-            path.addLine(to: CGPoint(x: CGFloat(xValues[i]), y: CGFloat(y)))
-        }
-
-        let lineLayer = CAShapeLayer()
-        lineLayer.frame = self.bounds
-        lineLayer.path = path
-
-        if isAboveZeroLine {
-            lineLayer.strokeColor = series[seriesIndex].colors.above.cgColor
-        } else {
-            lineLayer.strokeColor = series[seriesIndex].colors.below.cgColor
-        }
-        lineLayer.fillColor = nil
-        lineLayer.lineWidth = series[seriesIndex].lineWidth ?? lineWidth
-        lineLayer.lineJoin = CAShapeLayerLineJoin.bevel
-
-        layer.addSublayer(lineLayer)
-    }
-
-    private func drawArea(_ xValues: [Double], yValues: [Double], seriesIndex: Int) {
-        // YValues are "reverted" from top to bottom, so 'above' means <= level
-        let isAboveZeroLine = yValues.max()! <= self.scaleValueOnYAxis(series[seriesIndex].colors.zeroLevel)
-        let area = CGMutablePath()
-        let zero = CGFloat(getZeroValueOnYAxis(zeroLevel: series[seriesIndex].colors.zeroLevel))
-
-        area.move(to: CGPoint(x: CGFloat(xValues[0]), y: zero))
-        for i in 0..<xValues.count {
-            area.addLine(to: CGPoint(x: CGFloat(xValues[i]), y: CGFloat(yValues[i])))
-        }
-        area.addLine(to: CGPoint(x: CGFloat(xValues.last!), y: zero))
-        let areaLayer = CAShapeLayer()
-        areaLayer.frame = self.bounds
-        areaLayer.path = area
-        areaLayer.strokeColor = nil
-        if isAboveZeroLine {
-            areaLayer.fillColor = series[seriesIndex].colors.above.withAlphaComponent(areaAlphaComponent).cgColor
-        } else {
-            areaLayer.fillColor = series[seriesIndex].colors.below.withAlphaComponent(areaAlphaComponent).cgColor
-        }
-        areaLayer.lineWidth = 0
-
-        layer.addSublayer(areaLayer)
-    }
 
     private func drawAxes() {
         let path = CGMutablePath()
@@ -886,42 +823,6 @@ open class Chart: UIView {
         )
     }
 
-    /**
-    Segment a line in multiple lines when the line touches the x-axis, i.e. separating
-    positive from negative values.
-    */
-    private static func segmentLine(_ line: ChartLineSegment, zeroLevel: Double) -> [ChartLineSegment] {
-        var segments: [ChartLineSegment] = []
-        var segment: ChartLineSegment = []
-
-        for (i, point) in line.enumerated() {
-            segment.append(point)
-            if i < line.count - 1 {
-                let nextPoint = line[i+1]
-                if point.y >= zeroLevel && nextPoint.y < zeroLevel || point.y < zeroLevel && nextPoint.y >= zeroLevel {
-                    // The segment intersects zeroLevel, close the segment with the intersection point
-                    let closingPoint = Chart.intersectionWithLevel(point, and: nextPoint, level: zeroLevel)
-                    segment.append(closingPoint)
-                    segments.append(segment)
-                    // Start a new segment
-                    segment = [closingPoint]
-                }
-            } else {
-                // End of the line
-                segments.append(segment)
-            }
-        }
-        return segments
-    }
-
-    /**
-    Return the intersection of a line between two points and 'y = level' line
-    */
-    private static func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
-        let dy1 = level - p1.y
-        let dy2 = level - p2.y
-        return (x: (p2.x * dy1 - p1.x * dy2) / (dy1 - dy2), y: level)
-    }
 }
 
 extension Sequence where Element == Double {
