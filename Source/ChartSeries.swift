@@ -125,21 +125,21 @@ open class ChartSeries {
     func createLayers(for chart: Chart) -> [CAShapeLayer] {
         layers = []
         for segment in segments {
-            let scaledXValues = chart.scaleValuesOnXAxis( segment.map { $0.x } )
-            let scaledYValues = chart.scaleValuesOnYAxis( segment.map { $0.y } )
-
             if line {
-                layers.append(drawLine(on: chart, scaledXValues, yValues: scaledYValues))
+                layers.append(drawLine(segment: segment, on: chart))
             }
             if area {
-                layers.append(drawArea(on: chart, scaledXValues, yValues: scaledYValues))
+                layers.append(drawArea(segment: segment, on: chart))
             }
         }
         
         return layers
     }
 
-    private func drawLine(on chart: Chart, _ xValues: [Double], yValues: [Double]) -> CAShapeLayer {
+    private func drawLine(segment: ChartLineSegment, on chart: Chart) -> CAShapeLayer {
+        let xValues = chart.scaleValuesOnXAxis( segment.map { $0.x } )
+        let yValues = chart.scaleValuesOnYAxis( segment.map { $0.y } )
+
         // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let path = CGMutablePath()
@@ -165,7 +165,10 @@ open class ChartSeries {
         return lineLayer
     }
 
-    private func drawArea(on chart: Chart, _ xValues: [Double], yValues: [Double]) -> CAShapeLayer {
+    private func drawArea(segment: ChartLineSegment, on chart: Chart) -> CAShapeLayer {
+        let xValues = chart.scaleValuesOnXAxis( segment.map { $0.x } )
+        let yValues = chart.scaleValuesOnYAxis( segment.map { $0.y } )
+
         // YValues are "reverted" from top to bottom, so 'above' means <= level
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let area = CGMutablePath()
