@@ -55,6 +55,7 @@ public enum ChartLabelOrientation {
 
 @IBDesignable
 open class Chart: UIView {
+    private static let MAX_LABELS = 11
 
     // MARK: Options
 
@@ -70,6 +71,7 @@ open class Chart: UIView {
     /**
     The values to display as labels on the x-axis. You can format these values  with the `xLabelFormatter` attribute. 
     As default, it will display the values of the series which has the most data.
+    xLabelsの要素の数は最大MAX_LABELSまで
     */
     public var xLabels: [Double]?
 
@@ -111,6 +113,7 @@ open class Chart: UIView {
     /**
     Values to display as labels of the y-axis. If not specified, will display the lowest, the middle and the highest
     values.
+    yLabelsの要素の数は最大MAX_LABELSまで
     */
     public var yLabels: [Double]?
 
@@ -278,9 +281,9 @@ open class Chart: UIView {
     private var max: ChartPoint = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
     
     private let axesLayer: CAShapeLayer = CAShapeLayer()
-    private let xLabelLayers: [CATextLayer] = (0..<10).map { _ in CATextLayer() }
+    private let xLabelLayers: [CATextLayer] = (0..<Chart.MAX_LABELS).map { _ in CATextLayer() }
     private let xGridLayer: CAShapeLayer = CAShapeLayer()
-    private let yLabelLayers: [CATextLayer] = (0..<10).map { _ in CATextLayer() }
+    private let yLabelLayers: [CATextLayer] = (0..<Chart.MAX_LABELS).map { _ in CATextLayer() }
     private let yGridLayers: (CAShapeLayer, CAShapeLayer) = (CAShapeLayer(), CAShapeLayer())
 
     // Represent a set of points corresponding to a segment line on the chart.
@@ -304,7 +307,6 @@ open class Chart: UIView {
 
     open func commonInit() {
         //backgroundColor = UIColor.clear // オリジナルで強制的にclearしているが、storyboardの初期化を使うためコメントアウト
-        contentMode = .redraw // redraw rects on bounds change
         axesLayer.strokeColor = axesColor.cgColor
         axesLayer.lineWidth = 0.5
         layer.addSublayer(axesLayer)
