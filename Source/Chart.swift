@@ -395,8 +395,8 @@ open class Chart: UIView {
     open func removeSeriesAt(_ index: Int) {
         series[index].removeFromChart()
         series.remove(at: index)
-        min = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
-        max = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
+        min = (x: minX ?? CGFloat.greatestFiniteMagnitude, y: minY ?? CGFloat.greatestFiniteMagnitude)
+        max = (x: maxX ?? -CGFloat.greatestFiniteMagnitude, y: maxY ?? -CGFloat.greatestFiniteMagnitude)
     }
 
     /**
@@ -407,8 +407,8 @@ open class Chart: UIView {
             series.removeFromChart()
         }
         series = []
-        min = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
-        max = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
+        min = (x: minX ?? CGFloat.greatestFiniteMagnitude, y: minY ?? CGFloat.greatestFiniteMagnitude)
+        max = (x: maxX ?? -CGFloat.greatestFiniteMagnitude, y: maxY ?? -CGFloat.greatestFiniteMagnitude)
     }
 
     /**
