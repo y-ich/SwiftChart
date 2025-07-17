@@ -19,7 +19,16 @@ final class ChartSegment {
         return areaLayer!
     }
     
-    func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+    func redraw(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+        if lineLayer != nil {
+            setLinePathAndColor(with: colors, on: chart)
+        }
+        if areaLayer != nil {
+            setAreaPathAndColor(with: colors, on: chart)
+        }
+    }
+    
+    private func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
@@ -34,7 +43,7 @@ final class ChartSegment {
         lineLayer?.strokeColor = (isAboveZeroLine ? colors.above : colors.below).cgColor
     }
     
-    func setAreaPathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+    private func setAreaPathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
         let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)

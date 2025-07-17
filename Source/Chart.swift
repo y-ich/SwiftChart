@@ -63,12 +63,9 @@ open class Chart: UIView {
 
     /**
     Series to display in the chart.
+    このプロパティにはアクセッサを用意したので直接アクセスしないこと
     */
-    public var series: [ChartSeries] = [] {
-      didSet {
-        recalcMinMax()
-      }
-    }
+    public private(set) var series: [ChartSeries] = []
 
     /**
     The values to display as labels on the x-axis. You can format these values  with the `xLabelFormatter` attribute. 
@@ -86,7 +83,20 @@ open class Chart: UIView {
     /**
     Text alignment for the x-labels.
     */
-    public var xLabelsTextAlignment: NSTextAlignment = .left
+    public var xLabelsTextAlignment: NSTextAlignment = .left {
+        didSet {
+            let alignment: CATextLayerAlignmentMode
+            switch xLabelsTextAlignment {
+            case .center: alignment = .center
+            case .left: alignment = .left
+            case .right: alignment = .right
+            default: alignment = .left
+            }
+            for layer in xLabelLayers {
+                layer.alignmentMode = alignment
+            }
+        }
+    }
 
     /**
     Orientation for the x-labels.
@@ -119,25 +129,49 @@ open class Chart: UIView {
     /**
     Font used for the labels.
     */
-    public var labelFont: UIFont = UIFont.systemFont(ofSize: 12)
+    public var labelFont: UIFont = UIFont.systemFont(ofSize: 12) {
+        didSet {
+            for layer in xLabelLayers + yLabelLayers {
+                layer.font = labelFont
+                layer.fontSize = labelFont.pointSize
+            }
+        }
+    }
 
     /**
     The color used for the labels.
     */
     @IBInspectable
-    public var labelColor: UIColor = UIColor.black
+    public var labelColor: UIColor = UIColor.black {
+        didSet {
+            for layer in xLabelLayers + yLabelLayers {
+                layer.foregroundColor = labelColor.cgColor
+            }
+        }
+    }
 
     /**
     Color for the axes.
     */
     @IBInspectable
-    public var axesColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
+    public var axesColor: UIColor = UIColor.gray.withAlphaComponent(0.3) {
+        didSet {
+            axesLayer.strokeColor = axesColor.cgColor
+        }
+    }
 
     /**
     Color for the grid.
     */
     @IBInspectable
-    public var gridColor: UIColor = UIColor.gray.withAlphaComponent(0.3)
+    public var gridColor: UIColor = UIColor.gray.withAlphaComponent(0.3) {
+        didSet {
+            xGridLayer.strokeColor = gridColor.cgColor
+            yGridLayers.0.strokeColor = gridColor.cgColor
+            yGridLayers.1.strokeColor = gridColor.cgColor
+            
+        }
+    }
     /**
     Enable the lines for the labels on the x-axis
     */
@@ -242,6 +276,12 @@ open class Chart: UIView {
     // Minimum and maximum values represented in the chart
     private var min: ChartPoint = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
     private var max: ChartPoint = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
+    
+    private let axesLayer: CAShapeLayer = CAShapeLayer()
+    private let xLabelLayers: [CATextLayer] = (0..<10).map { _ in CATextLayer() }
+    private let xGridLayer: CAShapeLayer = CAShapeLayer()
+    private let yLabelLayers: [CATextLayer] = (0..<10).map { _ in CATextLayer() }
+    private let yGridLayers: (CAShapeLayer, CAShapeLayer) = (CAShapeLayer(), CAShapeLayer())
 
     // Represent a set of points corresponding to a segment line on the chart.
     typealias ChartLineSegment = [ChartPoint]
@@ -265,11 +305,68 @@ open class Chart: UIView {
     private func commonInit() {
         //backgroundColor = UIColor.clear // オリジナルで強制的にclearしているが、storyboardの初期化を使うためコメントアウト
         contentMode = .redraw // redraw rects on bounds change
+        axesLayer.strokeColor = axesColor.cgColor
+        axesLayer.lineWidth = 0.5
+        layer.addSublayer(axesLayer)
+
+        for l in xLabelLayers {
+            l.font = labelFont
+            l.fontSize = labelFont.pointSize
+            l.contentsScale = UIScreen.main.scale
+            l.alignmentMode = {
+                switch xLabelsTextAlignment {
+                case .center: return .center
+                case .left: return .left
+                case .right: return .right
+                default: return .left
+                }
+            }()
+            layer.addSublayer(l)
+        }
+
+        layer.addSublayer(xGridLayer)
+        for l in yLabelLayers {
+            layer.addSublayer(l)
+        }
+        
+        for l in yLabelLayers {
+            l.font = labelFont
+            l.fontSize = labelFont.pointSize
+            l.contentsScale = UIScreen.main.scale
+            l.alignmentMode = .left // デフォルト、必要に応じて変更可能
+            l.isWrapped = false
+            layer.addSublayer(l)
+        }
+
+        let dashedLayer = yGridLayers.0
+        dashedLayer.lineWidth = 0.5
+        dashedLayer.lineDashPattern = [5]
+        dashedLayer.lineDashPhase = 0
+        layer.addSublayer(dashedLayer)
+        
+        let solidLayer = yGridLayers.1
+        solidLayer.lineWidth = 0.5
+        layer.addSublayer(solidLayer)
     }
 
     override open func layoutSubviews() {
         super.layoutSubviews()
+        // layoutSubviewsでremoveFromSuperlayerやaddSublayerをすると、(layer.sublayersではなく)subviewsすら整合性が保てなくなり、subviewsの要素がメモリ解放されてしまっていたりする。
+        // なのでdrawChartではそれらの操作をしないように大改造した。
         drawChart()
+    }
+    
+    // MARK: series accessors
+    
+    open func set(series: [ChartSeries]) {
+        removeAllSeries()
+        self.series = series
+        recalcMinMax()
+        for s in self.series {
+            for l in s.createLayers(for: self) {
+                layer.addSublayer(l)
+            }
+        }
     }
 
     /**
@@ -278,6 +375,9 @@ open class Chart: UIView {
     open func add(_ series: ChartSeries) {
         self.series.append(series)
         updateMinMax(by: series)
+        for l in series.createLayers(for: self) {
+            layer.addSublayer(l)
+        }
     }
 
     /**
@@ -302,6 +402,9 @@ open class Chart: UIView {
     Remove all the series.
     */
     open func removeAllSeries() {
+        for series in self.series {
+            series.removeFromChart()
+        }
         series = []
     }
 
@@ -318,6 +421,9 @@ open class Chart: UIView {
         let series = self.series[seriesIndex]
         series.append(point: point)
         updateMinMax(by: point)
+        for l in series.createLayers(for: self) {
+            layer.addSublayer(l)
+        }
     }
 
     override open func prepareForInterfaceBuilder() {
@@ -336,24 +442,13 @@ open class Chart: UIView {
     }
     
     private func drawChart() {
-
         drawingHeight = bounds.height - bottomInset - topInset
         drawingWidth = bounds.width
         
         highlightShapeLayer = nil
 
-        // Remove things before drawing, e.g. when changing orientation
-
-        for layer in layer.sublayers ?? [] {
-            layer.removeFromSuperlayer()
-        }
-
-        // Draw content
-
         for series in self.series {
-            for layer in series.createLayers(for: self) {
-                self.layer.addSublayer(layer)
-            }
+            series.redraw(for: self)
         }
 
         drawAxes()
@@ -514,26 +609,14 @@ open class Chart: UIView {
         path.move(to: CGPoint(x: CGFloat(drawingWidth), y: CGFloat(0)))
         path.addLine(to: CGPoint(x: CGFloat(drawingWidth), y: drawingHeight + topInset))
         
-        let axesLayer = CAShapeLayer()
         axesLayer.frame = self.bounds
         axesLayer.path = path
-        axesLayer.strokeColor = axesColor.cgColor
-        axesLayer.lineWidth = 0.5
-
-        layer.addSublayer(axesLayer)
     }
 
     private func drawLabelsAndGridOnXAxis() {
         let path = CGMutablePath()
 
-        var labels: [Double]
-        if xLabels == nil {
-            // Use labels from the first series
-            labels = series[0].data.map({ (point: ChartPoint) -> Double in
-                return point.x })
-        } else {
-            labels = xLabels!
-        }
+        let labels = xLabels ?? [min.x, (min.x + max.x) / 2, max.x]
 
         let scaled = scaleValuesOnXAxis(labels)
         let padding: CGFloat = 5
@@ -558,20 +641,8 @@ open class Chart: UIView {
             let attributes: [NSAttributedString.Key: Any] = [.font: font]
             let size = (text as NSString).size(withAttributes: attributes)
 
-            let textLayer = CATextLayer()
+            let textLayer = xLabelLayers[i]
             textLayer.string = text
-            textLayer.font = font
-            textLayer.fontSize = font.pointSize
-            textLayer.foregroundColor = labelColor.cgColor
-            textLayer.contentsScale = UIScreen.main.scale
-            textLayer.alignmentMode = {
-                switch xLabelsTextAlignment {
-                case .center: return .center
-                case .left: return .left
-                case .right: return .right
-                default: return .left
-                }
-            }()
 
             var frame = CGRect(x: x, y: drawingHeight, width: size.width, height: size.height)
 
@@ -603,15 +674,11 @@ open class Chart: UIView {
             }
 
             textLayer.frame = frame
-            layer.addSublayer(textLayer)
         }
-        let gridLayer = CAShapeLayer()
+        let gridLayer = xGridLayer
         gridLayer.frame = self.bounds
         gridLayer.path = path
-        gridLayer.strokeColor = gridColor.cgColor
         gridLayer.lineWidth = 0.5
-
-        layer.addSublayer(gridLayer)
     }
 
     private func drawLabelsAndGridOnYAxis() {
@@ -633,7 +700,6 @@ open class Chart: UIView {
         let zero = CGFloat(getZeroValueOnYAxis(zeroLevel: 0))
 
         for (i, value) in scaled.enumerated() {
-
             let y = CGFloat(value)
 
             // Add horizontal grid for each label, but not over axes
@@ -652,14 +718,8 @@ open class Chart: UIView {
             let attributes: [NSAttributedString.Key: Any] = [.font: font]
             let size = (text as NSString).size(withAttributes: attributes)
 
-            let textLayer = CATextLayer()
+            let textLayer = yLabelLayers[i]
             textLayer.string = text
-            textLayer.font = font
-            textLayer.fontSize = font.pointSize
-            textLayer.foregroundColor = labelColor.cgColor
-            textLayer.contentsScale = UIScreen.main.scale
-            textLayer.alignmentMode = .left // デフォルト、必要に応じて変更可能
-            textLayer.isWrapped = false
 
             // 初期X座標（左側のY軸用）
             var xPosition = padding
@@ -676,26 +736,15 @@ open class Chart: UIView {
                             height: size.height)
 
             textLayer.frame = frame
-            layer.addSublayer(textLayer)
         }
 
-        let dashedLayer = CAShapeLayer()
+        let dashedLayer = yGridLayers.0
         dashedLayer.frame = self.bounds
         dashedLayer.path = dashed
-        dashedLayer.strokeColor = gridColor.cgColor
-        dashedLayer.lineWidth = 0.5
-        dashedLayer.lineDashPattern = [5]
-        dashedLayer.lineDashPhase = 0
 
-        layer.addSublayer(dashedLayer)
-
-        let solidLayer = CAShapeLayer()
+        let solidLayer = yGridLayers.1
         solidLayer.frame = self.bounds
         solidLayer.path = solid
-        solidLayer.strokeColor = gridColor.cgColor
-        solidLayer.lineWidth = 0.5
-
-        layer.addSublayer(solidLayer)
     }
 
     // MARK: - Touch events

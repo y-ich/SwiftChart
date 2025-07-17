@@ -12,33 +12,6 @@ The `ChartSeries` class create a chart series and configure its appearance and b
 */
 open class ChartSeries {
     /**
-    Segment a line in multiple lines when the line touches the x-axis, i.e. separating
-    positive from negative values.
-    */
-    private func updateSegments() {
-        segments = []
-        var segment: [ChartPoint] = []
-
-        for (i, point) in data.enumerated() {
-            segment.append(point)
-            if i < data.count - 1 {
-                let nextPoint = data[i+1]
-                if point.y >= colors.zeroLevel && nextPoint.y < colors.zeroLevel || point.y < colors.zeroLevel && nextPoint.y >= colors.zeroLevel {
-                    // The segment intersects zeroLevel, close the segment with the intersection point
-                    let closingPoint = ChartSeries.intersectionWithLevel(point, and: nextPoint, level: colors.zeroLevel)
-                    segment.append(closingPoint)
-                    segments.append(ChartSegment(data: segment))
-                    // Start a new segment
-                    segment = [closingPoint]
-                }
-            } else {
-                // End of the line
-                segments.append(ChartSegment(data: segment))
-            }
-        }
-    }
-
-    /**
     Return the intersection of a line between two points and 'y = level' line
     */
     private static func intersectionWithLevel(_ p1: ChartPoint, and p2: ChartPoint, level: Double) -> ChartPoint {
@@ -69,8 +42,6 @@ open class ChartSeries {
     public var area: Bool = false
     
     private var segments: [ChartSegment] = []
-    
-    private var layers: [CAShapeLayer] = []
 
     /**
     The series color.
@@ -115,7 +86,7 @@ open class ChartSeries {
     }
     
     func createLayers(for chart: Chart) -> [CAShapeLayer] {
-        layers = []
+        var layers = Array<CAShapeLayer>()
         for segment in segments {
             if line {
                 layers.append(segment.getLineLayer(width: lineWidth ?? chart.lineWidth, with: colors, for: chart))
@@ -127,5 +98,54 @@ open class ChartSeries {
         
         return layers
     }
+    
+    func redraw(for chart: Chart) {
+        for segment in segments {
+            if line {
+                segment.redraw(with: colors, on: chart)
+            }
+            if area {
+                segment.redraw(with: colors, on: chart)
+            }
+        }
+    }
+    
+    open func removeFromChart() {
+        for segment in segments {
+            segment.lineLayer?.removeFromSuperlayer()
+            segment.areaLayer?.removeFromSuperlayer()
+        }
+    }
 
+    /**
+    Segment a line in multiple lines when the line touches the x-axis, i.e. separating
+    positive from negative values.
+    */
+    private func updateSegments() {
+        for segment in segments {
+            segment.lineLayer?.removeFromSuperlayer()
+            segment.areaLayer?.removeFromSuperlayer()
+        }
+        segments = []
+
+        var segment: [ChartPoint] = []
+
+        for (i, point) in data.enumerated() {
+            segment.append(point)
+            if i < data.count - 1 {
+                let nextPoint = data[i+1]
+                if point.y >= colors.zeroLevel && nextPoint.y < colors.zeroLevel || point.y < colors.zeroLevel && nextPoint.y >= colors.zeroLevel {
+                    // The segment intersects zeroLevel, close the segment with the intersection point
+                    let closingPoint = ChartSeries.intersectionWithLevel(point, and: nextPoint, level: colors.zeroLevel)
+                    segment.append(closingPoint)
+                    segments.append(ChartSegment(data: segment))
+                    // Start a new segment
+                    segment = [closingPoint]
+                }
+            } else {
+                // End of the line
+                segments.append(ChartSegment(data: segment))
+            }
+        }
+    }
 }
