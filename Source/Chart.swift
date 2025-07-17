@@ -393,6 +393,7 @@ open class Chart: UIView {
     Remove the series at the specified index.
     */
     open func removeSeriesAt(_ index: Int) {
+        series[index].removeFromChart()
         series.remove(at: index)
         min = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
         max = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
@@ -406,6 +407,8 @@ open class Chart: UIView {
             series.removeFromChart()
         }
         series = []
+        min = (x: CGFloat.greatestFiniteMagnitude, y: CGFloat.greatestFiniteMagnitude)
+        max = (x: -CGFloat.greatestFiniteMagnitude, y: -CGFloat.greatestFiniteMagnitude)
     }
 
     /**
@@ -419,11 +422,13 @@ open class Chart: UIView {
 
     open func add(point: ChartPoint, to seriesIndex: Int) {
         let series = self.series[seriesIndex]
-        series.append(point: point)
-        updateMinMax(by: point)
-        for l in series.createLayers(for: self) {
-            layer.addSublayer(l)
+        if series.append(point: point) {
+            for l in series.createLayersOfLastSegment(for: self) {
+                layer.addSublayer(l)
+            }
         }
+        updateMinMax(by: point)
+        drawChart()
     }
 
     override open func prepareForInterfaceBuilder() {

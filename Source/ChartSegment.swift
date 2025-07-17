@@ -28,6 +28,11 @@ final class ChartSegment {
         }
     }
     
+    func removeFromSuperlayer() {
+        lineLayer?.removeFromSuperlayer()
+        areaLayer?.removeFromSuperlayer()
+    }
+    
     private func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )

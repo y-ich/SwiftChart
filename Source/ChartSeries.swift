@@ -80,9 +80,9 @@ open class ChartSeries {
         updateSegments()
     }
     
-    func append(point: ChartPoint) {
+    func append(point: ChartPoint) -> Bool {
         data.append(point)
-        updateSegments()
+        return updateSegmentsTail()
     }
     
     func createLayers(for chart: Chart) -> [CAShapeLayer] {
@@ -96,6 +96,19 @@ open class ChartSeries {
             }
         }
         
+        return layers
+    }
+    
+    func createLayersOfLastSegment(for chart: Chart) -> [CAShapeLayer] {
+        var layers = Array<CAShapeLayer>()
+        if let last = segments.last {
+            if line {
+                layers.append(last.getLineLayer(width: lineWidth ?? chart.lineWidth, with: colors, for: chart))
+            }
+            if area {
+                layers.append(last.getAreaLayer(with: colors, for: chart))
+            }
+        }
         return layers
     }
     
@@ -123,8 +136,7 @@ open class ChartSeries {
     */
     private func updateSegments() {
         for segment in segments {
-            segment.lineLayer?.removeFromSuperlayer()
-            segment.areaLayer?.removeFromSuperlayer()
+            segment.removeFromSuperlayer()
         }
         segments = []
 
@@ -147,5 +159,28 @@ open class ChartSeries {
                 segments.append(ChartSegment(data: segment))
             }
         }
+    }
+
+    /** segmentを追加した時trueを返す */
+    private func updateSegmentsTail() -> Bool {
+        guard let lastPoint = data.last else {
+            return false
+        }
+        if let segment = segments.last {
+            let point = segment.data.last!
+            if point.y >= colors.zeroLevel && lastPoint.y < colors.zeroLevel || point.y < colors.zeroLevel && lastPoint.y >= colors.zeroLevel {
+                // The segment intersects zeroLevel, close the segment with the intersection point
+                let closingPoint = ChartSeries.intersectionWithLevel(point, and: lastPoint, level: colors.zeroLevel)
+                segment.data.append(closingPoint)
+                segments.append(ChartSegment(data: [closingPoint, lastPoint]))
+                return true
+            } else {
+                segment.data.append(lastPoint)
+            }
+        } else {
+            segments.append(ChartSegment(data: [lastPoint]))
+            return true
+        }
+        return false
     }
 }
