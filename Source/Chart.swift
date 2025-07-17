@@ -302,7 +302,7 @@ open class Chart: UIView {
         self.init(frame: .zero)
     }
 
-    private func commonInit() {
+    open func commonInit() {
         //backgroundColor = UIColor.clear // オリジナルで強制的にclearしているが、storyboardの初期化を使うためコメントアウト
         contentMode = .redraw // redraw rects on bounds change
         axesLayer.strokeColor = axesColor.cgColor
