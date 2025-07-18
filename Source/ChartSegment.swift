@@ -14,9 +14,8 @@ final class ChartSegment {
     func createLineLayer(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
         lineLayer = CAShapeLayer()
         lineLayer?.fillColor = nil
-        lineLayer?.lineWidth = lineWidth
         lineLayer?.lineJoin = CAShapeLayerLineJoin.bevel
-        setLinePathAndColor(with: colors, on: chart)
+        setLinePathAndColor(lineWidth: lineWidth, with: colors, on: chart)
         return lineLayer!
     }
     
@@ -28,9 +27,9 @@ final class ChartSegment {
         return areaLayer!
     }
     
-    func redraw(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+    func redraw(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         if lineLayer != nil {
-            setLinePathAndColor(with: colors, on: chart)
+            setLinePathAndColor(lineWidth: lineWidth, with: colors, on: chart)
         }
         if areaLayer != nil {
             setAreaPathAndColor(with: colors, on: chart)
@@ -42,7 +41,7 @@ final class ChartSegment {
         areaLayer?.removeFromSuperlayer()
     }
     
-    private func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
+    private func setLinePathAndColor(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
         let path = CGMutablePath()
@@ -51,6 +50,7 @@ final class ChartSegment {
             let y = yValues[i]
             path.addLine(to: CGPoint(x: CGFloat(xValues[i]), y: CGFloat(y)))
         }
+        lineLayer?.lineWidth = lineWidth
         lineLayer?.frame = chart.bounds
         lineLayer?.path = path
         lineLayer?.strokeColor = (isAboveZeroLine ? colors.above : colors.below).cgColor

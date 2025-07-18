@@ -120,12 +120,7 @@ open class ChartSeries {
     
     func redraw(for chart: Chart) {
         for segment in segments {
-            if line {
-                segment.redraw(with: colors, on: chart)
-            }
-            if area {
-                segment.redraw(with: colors, on: chart)
-            }
+            segment.redraw(lineWidth: lineWidth ?? chart.lineWidth, with: colors, on: chart)
         }
     }
     
