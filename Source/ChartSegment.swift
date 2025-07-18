@@ -1,21 +1,30 @@
 import UIKit
 
 final class ChartSegment {
+    let isAboveZeroLine: Bool
     var data: [ChartPoint]
     var lineLayer: CAShapeLayer?
     var areaLayer: CAShapeLayer?
 
-    init(data: [ChartPoint]) {
+    init(data: [ChartPoint], isAboveZeroLine: Bool) {
+        self.isAboveZeroLine = isAboveZeroLine
         self.data = data
     }
     
-    func getLineLayer(width: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
-        drawLine(width: width, with: colors, on: chart)
+    func createLineLayer(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
+        lineLayer = CAShapeLayer()
+        lineLayer?.fillColor = nil
+        lineLayer?.lineWidth = lineWidth
+        lineLayer?.lineJoin = CAShapeLayerLineJoin.bevel
+        setLinePathAndColor(with: colors, on: chart)
         return lineLayer!
     }
     
-    func getAreaLayer(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
-        drawArea(with: colors, on: chart)
+    func createAreaLayer(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
+        areaLayer = CAShapeLayer()
+        areaLayer?.strokeColor = nil
+        areaLayer?.lineWidth = 0
+        setAreaPathAndColor(with: colors, on: chart)
         return areaLayer!
     }
     
@@ -36,7 +45,6 @@ final class ChartSegment {
     private func setLinePathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
-        let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let path = CGMutablePath()
         path.move(to: CGPoint(x: CGFloat(xValues.first!), y: CGFloat(yValues.first!)))
         for i in 1..<yValues.count {
@@ -51,7 +59,6 @@ final class ChartSegment {
     private func setAreaPathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
-        let isAboveZeroLine = yValues.max()! <= chart.scaleValueOnYAxis(colors.zeroLevel)
         let area = CGMutablePath()
         let zero = CGFloat(chart.getZeroValueOnYAxis(zeroLevel: colors.zeroLevel))
 
@@ -63,20 +70,5 @@ final class ChartSegment {
         lineLayer?.frame = chart.bounds
         lineLayer?.path = area
         lineLayer?.fillColor = (isAboveZeroLine ? colors.above : colors.below).withAlphaComponent(chart.areaAlphaComponent).cgColor
-    }
-    
-    private func drawLine(width: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
-        lineLayer = CAShapeLayer()
-        lineLayer?.fillColor = nil
-        lineLayer?.lineWidth = width
-        lineLayer?.lineJoin = CAShapeLayerLineJoin.bevel
-        setLinePathAndColor(with: colors, on: chart)
-    }
-
-    private func drawArea(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
-        areaLayer = CAShapeLayer()
-        areaLayer?.strokeColor = nil
-        areaLayer?.lineWidth = 0
-        setAreaPathAndColor(with: colors, on: chart)
     }
 }

@@ -59,7 +59,13 @@ open class ChartSeries {
         above: UIColor,
         below: UIColor,
         zeroLevel: Double
-    ) = (above: ChartColors.blueColor(), below: ChartColors.redColor(), 0)
+    ) = (above: ChartColors.blueColor(), below: ChartColors.redColor(), 0) {
+        didSet {
+            if oldValue.zeroLevel != colors.zeroLevel {
+                updateSegments()
+            }
+        }
+    }
 
     public init(_ data: [Double]) {
         self.data = data.enumerated().map { (x: Double($0.offset), y: $0.element) }
@@ -89,10 +95,10 @@ open class ChartSeries {
         var layers = Array<CAShapeLayer>()
         for segment in segments {
             if line {
-                layers.append(segment.getLineLayer(width: lineWidth ?? chart.lineWidth, with: colors, for: chart))
+                layers.append(segment.createLineLayer(lineWidth: lineWidth ?? chart.lineWidth, with: colors, for: chart))
             }
             if area {
-                layers.append(segment.getAreaLayer(with: colors, for: chart))
+                layers.append(segment.createAreaLayer(with: colors, for: chart))
             }
         }
         
@@ -103,10 +109,10 @@ open class ChartSeries {
         var layers = Array<CAShapeLayer>()
         if let last = segments.last {
             if line {
-                layers.append(last.getLineLayer(width: lineWidth ?? chart.lineWidth, with: colors, for: chart))
+                layers.append(last.createLineLayer(lineWidth: lineWidth ?? chart.lineWidth, with: colors, for: chart))
             }
             if area {
-                layers.append(last.getAreaLayer(with: colors, for: chart))
+                layers.append(last.createAreaLayer(with: colors, for: chart))
             }
         }
         return layers
@@ -144,19 +150,20 @@ open class ChartSeries {
 
         for (i, point) in data.enumerated() {
             segment.append(point)
+            let isAboveZeroLine = point.y >= colors.zeroLevel
             if i < data.count - 1 {
                 let nextPoint = data[i+1]
-                if point.y >= colors.zeroLevel && nextPoint.y < colors.zeroLevel || point.y < colors.zeroLevel && nextPoint.y >= colors.zeroLevel {
+                if isAboveZeroLine && nextPoint.y < colors.zeroLevel || !isAboveZeroLine && nextPoint.y >= colors.zeroLevel {
                     // The segment intersects zeroLevel, close the segment with the intersection point
                     let closingPoint = ChartSeries.intersectionWithLevel(point, and: nextPoint, level: colors.zeroLevel)
                     segment.append(closingPoint)
-                    segments.append(ChartSegment(data: segment))
+                    segments.append(ChartSegment(data: segment, isAboveZeroLine: isAboveZeroLine))
                     // Start a new segment
                     segment = [closingPoint]
                 }
             } else {
                 // End of the line
-                segments.append(ChartSegment(data: segment))
+                segments.append(ChartSegment(data: segment, isAboveZeroLine: isAboveZeroLine))
             }
         }
     }
@@ -168,17 +175,18 @@ open class ChartSeries {
         }
         if let segment = segments.last {
             let point = segment.data.last!
-            if point.y >= colors.zeroLevel && lastPoint.y < colors.zeroLevel || point.y < colors.zeroLevel && lastPoint.y >= colors.zeroLevel {
+            let isAboveZeroLine = point.y >= colors.zeroLevel
+            if isAboveZeroLine && lastPoint.y < colors.zeroLevel || !isAboveZeroLine && lastPoint.y >= colors.zeroLevel {
                 // The segment intersects zeroLevel, close the segment with the intersection point
                 let closingPoint = ChartSeries.intersectionWithLevel(point, and: lastPoint, level: colors.zeroLevel)
                 segment.data.append(closingPoint)
-                segments.append(ChartSegment(data: [closingPoint, lastPoint]))
+                segments.append(ChartSegment(data: [closingPoint, lastPoint], isAboveZeroLine: !isAboveZeroLine))
                 return true
             } else {
                 segment.data.append(lastPoint)
             }
         } else {
-            segments.append(ChartSegment(data: [lastPoint]))
+            segments.append(ChartSegment(data: [lastPoint], isAboveZeroLine: lastPoint.y >= colors.zeroLevel))
             return true
         }
         return false
