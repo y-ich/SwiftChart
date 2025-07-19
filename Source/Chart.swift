@@ -73,7 +73,15 @@ open class Chart: UIView {
     As default, it will display the values of the series which has the most data.
     xLabelsの要素の数は最大MAX_LABELSまで
     */
-    public var xLabels: [Double]?
+    public var xLabels: [Double]? {
+        didSet {
+            if updateMinXMaxXByXLabels() {
+                updateAll()
+            } else {
+                updateAxesLabelsGrid()
+            }
+        }
+    }
 
     /**
     Formatter for the labels on the x-axis. `index` represents the `xLabels` index, `value` its value.
@@ -115,7 +123,15 @@ open class Chart: UIView {
     values.
     yLabelsの要素の数は最大MAX_LABELSまで
     */
-    public var yLabels: [Double]?
+    public var yLabels: [Double]? {
+        didSet {
+            if updateMinYMaxYByYLabels() {
+                updateAll()
+            } else {
+                updateAxesLabelsGrid()
+            }
+        }
+    }
 
     /**
     Formatter for the labels on the y-axis.
@@ -352,10 +368,34 @@ open class Chart: UIView {
     }
 
     override open func layoutSubviews() {
-        super.layoutSubviews()
         // layoutSubviewsでremoveFromSuperlayerやaddSublayerをすると、(layer.sublayersではなく)subviewsすら整合性が保てなくなり、subviewsの要素がメモリ解放されてしまっていたりする。
-        // なのでdrawChartではそれらの操作をしないように大改造した。
-        drawChart()
+        // なのでそれらの操作をしないように大改造した。
+        super.layoutSubviews()
+        drawingHeight = bounds.height - bottomInset - topInset
+        drawingWidth = bounds.width
+        
+        highlightShapeLayer = nil
+
+        updateAll()
+    }
+    
+    private func updateAll() {
+        for series in self.series {
+            series.redraw(for: self)
+        }
+        
+        updateAxesLabelsGrid()
+    }
+    
+    private func updateAxesLabelsGrid() {
+        drawAxes()
+
+        if showXLabelsAndGrid && (xLabels != nil || series.count > 0) {
+            drawLabelsAndGridOnXAxis()
+        }
+        if showYLabelsAndGrid && (yLabels != nil || series.count > 0) {
+            drawLabelsAndGridOnYAxis()
+        }
     }
     
     // MARK: series accessors
@@ -364,6 +404,7 @@ open class Chart: UIView {
         removeAllSeries()
         self.series = series
         recalcMinMax()
+        updateAxesLabelsGrid()
         for s in self.series {
             for l in s.createLayers(for: self) {
                 layer.addSublayer(l)
@@ -375,8 +416,10 @@ open class Chart: UIView {
     Adds a chart series.
     */
     open func add(_ series: ChartSeries) {
+        if updateMinMax(by: series) {
+            updateAll()
+        }
         self.series.append(series)
-        updateMinMax(by: series)
         for l in series.createLayers(for: self) {
             layer.addSublayer(l)
         }
@@ -386,8 +429,33 @@ open class Chart: UIView {
     Adds multiple chart series.
     */
     open func add(_ series: [ChartSeries]) {
+        var needsUpdate = false
         for s in series {
-            add(s)
+            needsUpdate = needsUpdate || updateMinMax(by: s)
+        }
+        if needsUpdate {
+            updateAll()
+        }
+        for s in series {
+            self.series.append(s)
+            for l in s.createLayers(for: self) {
+                layer.addSublayer(l)
+            }
+        }
+    }
+
+    open func add(point: ChartPoint, to seriesIndex: Int) {
+        let series = self.series[seriesIndex]
+        if updateMinMax(by: point) {
+            updateAll()
+        }
+        if series.append(point: point) {
+            series.redraw(segmentIndex: series.segments.endIndex - 2, for: self)
+            for l in series.createLayersOfLastSegment(for: self) {
+                layer.addSublayer(l)
+            }
+        } else {
+            series.redraw(segmentIndex: series.segments.endIndex - 1, for: self)
         }
     }
 
@@ -399,6 +467,9 @@ open class Chart: UIView {
         series.remove(at: index)
         min = (x: minX ?? CGFloat.greatestFiniteMagnitude, y: minY ?? CGFloat.greatestFiniteMagnitude)
         max = (x: maxX ?? -CGFloat.greatestFiniteMagnitude, y: maxY ?? -CGFloat.greatestFiniteMagnitude)
+        if recalcMinMax() {
+            updateAll()
+        }
     }
 
     /**
@@ -422,17 +493,6 @@ open class Chart: UIView {
         return series.data[dataIndex!].y
     }
 
-    open func add(point: ChartPoint, to seriesIndex: Int) {
-        let series = self.series[seriesIndex]
-        if series.append(point: point) {
-            for l in series.createLayersOfLastSegment(for: self) {
-                layer.addSublayer(l)
-            }
-        }
-        updateMinMax(by: point)
-        drawChart()
-    }
-
     override open func prepareForInterfaceBuilder() {
         let placeholder = UIView(frame: self.frame)
         placeholder.backgroundColor = UIColor(red: 0.93, green: 0.93, blue: 0.93, alpha: 1)
@@ -448,36 +508,24 @@ open class Chart: UIView {
         addSubview(placeholder)
     }
     
-    private func drawChart() {
-        drawingHeight = bounds.height - bottomInset - topInset
-        drawingWidth = bounds.width
-        
-        highlightShapeLayer = nil
-
-        for series in self.series {
-            series.redraw(for: self)
-        }
-
-        drawAxes()
-
-        if showXLabelsAndGrid && (xLabels != nil || series.count > 0) {
-            drawLabelsAndGridOnXAxis()
-        }
-        if showYLabelsAndGrid && (yLabels != nil || series.count > 0) {
-            drawLabelsAndGridOnYAxis()
-        }
-    }
-
     // MARK: - Scaling
 
-    private func updateMinMax(by point: ChartPoint) {
+    private func updateMinMax(by point: ChartPoint) -> Bool {
+        let oldMin = min
+        let oldMax = max
+
         if point.x < min.x { min.x = point.x }
         if point.y < min.y { min.y = point.y }
         if point.x > max.x { max.x = point.x }
         if point.y > max.y { max.y = point.y }
+        
+        return min != oldMin || max != oldMax
     }
 
-    private func updateMinMax(by series: ChartSeries) {
+    private func updateMinMax(by series: ChartSeries) -> Bool {
+        let oldMin = min
+        let oldMax = max
+
         let xValues =  series.data.map { $0.x }
         let yValues =  series.data.map { $0.y }
 
@@ -490,9 +538,13 @@ open class Chart: UIView {
         if newMinY < min.y { min.y = newMinY }
         if newMaxX > max.x { max.x = newMaxX }
         if newMaxY > max.y { max.y = newMaxY }
+
+        return min != oldMin || max != oldMax
     }
 
-    private func recalcMinMax() {
+    private func recalcMinMax() -> Bool {
+        let oldMin = min
+        let oldMax = max
         // Start with user-provided values
 
         min = (x: minX ?? CGFloat.greatestFiniteMagnitude, y: minY ?? CGFloat.greatestFiniteMagnitude)
@@ -515,15 +567,32 @@ open class Chart: UIView {
 
         // Check in labels
 
+        _ = updateMinXMaxXByXLabels()
+        _ = updateMinYMaxYByYLabels()
+        
+        return min != oldMin || max != oldMax
+    }
+    
+    func updateMinXMaxXByXLabels() -> Bool {
+        let minX = min.x
+        let maxX = max.x
         if let xLabels = self.xLabels, xLabels.count > 0 {
             min.x = Swift.min(min.x, xLabels.min()!)
             max.x = Swift.max(max.x, xLabels.max()!)
         }
+        
+        return minX != min.x || maxX != max.x
+    }
 
+    func updateMinYMaxYByYLabels() -> Bool {
+        let minY = min.y
+        let maxY = max.y
         if let yLabels = self.yLabels, yLabels.count > 0 {
             min.y = Swift.min(min.y, yLabels.min()!)
             max.y = Swift.max(max.y, yLabels.max()!)
         }
+
+        return minY != min.y || maxY != max.y
     }
 
     func scaleValuesOnXAxis(_ values: [Double]) -> [Double] {

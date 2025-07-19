@@ -41,7 +41,7 @@ open class ChartSeries {
     */
     public var area: Bool = false
     
-    private var segments: [ChartSegment] = []
+    var segments: [ChartSegment] = []
 
     /**
     The series color.
@@ -62,7 +62,7 @@ open class ChartSeries {
     ) = (above: ChartColors.blueColor(), below: ChartColors.redColor(), 0) {
         didSet {
             if oldValue.zeroLevel != colors.zeroLevel {
-                updateSegments()
+                recalcSegents()
             }
         }
     }
@@ -73,17 +73,17 @@ open class ChartSeries {
 
     public init(data: [(x: Double, y: Double)]) {
         self.data = data
-        updateSegments()
+        recalcSegents()
     }
 
     public init(data: [(x: Int, y: Double)]) {
       self.data = data.map { (Double($0.x), Double($0.y)) }
-        updateSegments()
+        recalcSegents()
     }
     
     public init(data: [(x: Float, y: Float)]) {
         self.data = data.map { (Double($0.x), Double($0.y)) }
-        updateSegments()
+        recalcSegents()
     }
     
     func append(point: ChartPoint) -> Bool {
@@ -118,6 +118,10 @@ open class ChartSeries {
         return layers
     }
     
+    func redraw(segmentIndex: Int, for chart: Chart) {
+        segments[segmentIndex].redraw(lineWidth: lineWidth ?? chart.lineWidth, with: colors, on: chart)
+    }
+
     func redraw(for chart: Chart) {
         for segment in segments {
             segment.redraw(lineWidth: lineWidth ?? chart.lineWidth, with: colors, on: chart)
@@ -135,7 +139,7 @@ open class ChartSeries {
     Segment a line in multiple lines when the line touches the x-axis, i.e. separating
     positive from negative values.
     */
-    private func updateSegments() {
+    private func recalcSegents() {
         for segment in segments {
             segment.removeFromSuperlayer()
         }
