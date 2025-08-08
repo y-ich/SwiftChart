@@ -1,5 +1,8 @@
 import UIKit
 
+/**
+ ChartSegmentはChartSeriesの描画の構成要素です。zeroLevelの上下で分割された折れ線です。
+*/
 final class ChartSegment {
     let isAboveZeroLine: Bool
     var data: [ChartPoint]
@@ -11,6 +14,7 @@ final class ChartSegment {
         self.data = data
     }
     
+    /// 線を描画したCAShapeLayerを生成します。
     func createLineLayer(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
         lineLayer = CAShapeLayer()
         lineLayer?.fillColor = nil
@@ -19,6 +23,7 @@ final class ChartSegment {
         return lineLayer!
     }
     
+    /// エリアを描画したCAShapeLayerを生成します。
     func createAreaLayer(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), for chart: Chart) -> CAShapeLayer {
         areaLayer = CAShapeLayer()
         areaLayer?.strokeColor = nil
@@ -27,6 +32,7 @@ final class ChartSegment {
         return areaLayer!
     }
     
+    /// セグメントを再描画します。
     func redraw(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         if lineLayer != nil {
             setLinePathAndColor(lineWidth: lineWidth, with: colors, on: chart)
@@ -41,6 +47,7 @@ final class ChartSegment {
         areaLayer?.removeFromSuperlayer()
     }
     
+    /// lineLayerに線を描画します。
     private func setLinePathAndColor(lineWidth: CGFloat, with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
@@ -56,6 +63,7 @@ final class ChartSegment {
         lineLayer?.strokeColor = (isAboveZeroLine ? colors.above : colors.below).cgColor
     }
     
+    /// areaLayerにエリアを描画します。
     private func setAreaPathAndColor(with colors: (above: UIColor, below: UIColor, zeroLevel: Double), on chart: Chart) {
         let xValues = chart.scaleValuesOnXAxis( data.map { $0.x } )
         let yValues = chart.scaleValuesOnYAxis( data.map { $0.y } )
